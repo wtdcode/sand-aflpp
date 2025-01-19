@@ -713,11 +713,17 @@ static void edit_params(u32 argc, char **argv, char **envp) {
                 "Using unoptimized trace-pc-guard, due usage of "
                 "-fsanitize-coverage-allow/denylist, you can use "
                 "AFL_LLVM_ALLOWLIST/AFL_LLMV_DENYLIST instead.\n");
-          cc_params[cc_par_cnt++] = "-fsanitize-coverage=trace-pc-guard";
+          if (!getenv("AFL_SAN_NO_INST")) {
+            cc_params[cc_par_cnt++] = "-fsanitize-coverage=trace-pc-guard";
+          } else {
+            if (debug) {
+              DEBUGF("Instrument disabled\n");
+            }
+          }
           instrument_mode = INSTRUMENT_LLVMNATIVE;
 
         } else {
-
+if (!getenv("AFL_SAN_NO_INST")) {
     #if LLVM_MAJOR >= 11                            /* use new pass manager */
       #if LLVM_MAJOR < 16
           cc_params[cc_par_cnt++] = "-fexperimental-new-pass-manager";
@@ -731,17 +737,27 @@ static void edit_params(u32 argc, char **argv, char **envp) {
           cc_params[cc_par_cnt++] =
               alloc_printf("%s/SanitizerCoveragePCGUARD.so", obj_path);
     #endif
-
+} else {
+  if (debug) {
+    DEBUGF("Instrument disabled\n");
+  }
+}
         }
 
   #endif
 #else
   #if LLVM_MAJOR >= 4
+if (!getenv("AFL_SAN_NO_INST")) {
         if (!be_quiet)
           SAYF(
               "Using unoptimized trace-pc-guard, upgrade to llvm 10.0.1+ for "
               "enhanced version.\n");
         cc_params[cc_par_cnt++] = "-fsanitize-coverage=trace-pc-guard";
+} else {
+  if (debug) {
+    DEBUGF("Instrument disabled\n");
+  }
+}
         instrument_mode = INSTRUMENT_LLVMNATIVE;
   #else
         FATAL("pcguard instrumentation requires llvm 4.0.1+");
@@ -751,7 +767,13 @@ static void edit_params(u32 argc, char **argv, char **envp) {
       } else if (instrument_mode == INSTRUMENT_LLVMNATIVE) {
 
 #if LLVM_MAJOR >= 4
-        cc_params[cc_par_cnt++] = "-fsanitize-coverage=trace-pc-guard";
+        if (!getenv("AFL_SAN_NO_INST")) {
+          cc_params[cc_par_cnt++] = "-fsanitize-coverage=trace-pc-guard";
+        } else {
+          if (debug) {
+            DEBUGF("Instrument disabled\n");
+          }
+        }
 #else
         FATAL("pcguard instrumentation requires llvm 4.0.1+");
 #endif
@@ -759,17 +781,28 @@ static void edit_params(u32 argc, char **argv, char **envp) {
       } else {
 
 #if LLVM_MAJOR >= 11                                /* use new pass manager */
+        if (!getenv("AFL_SAN_NO_INST")) {
   #if LLVM_MAJOR < 16
-        cc_params[cc_par_cnt++] = "-fexperimental-new-pass-manager";
+          cc_params[cc_par_cnt++] = "-fexperimental-new-pass-manager";
   #endif
-        cc_params[cc_par_cnt++] =
-            alloc_printf("-fpass-plugin=%s/afl-llvm-pass.so", obj_path);
+          cc_params[cc_par_cnt++] =
+              alloc_printf("-fpass-plugin=%s/afl-llvm-pass.so", obj_path);
+        } else {
+          if (debug) {
+            DEBUGF("Instrument disabled\n");
+          }
+        }
 #else
-
-        cc_params[cc_par_cnt++] = "-Xclang";
-        cc_params[cc_par_cnt++] = "-load";
-        cc_params[cc_par_cnt++] = "-Xclang";
-        cc_params[cc_par_cnt++] = alloc_printf("%s/afl-llvm-pass.so", obj_path);
+        if (!getenv("AFL_SAN_NO_INST")) {
+          cc_params[cc_par_cnt++] = "-Xclang";
+          cc_params[cc_par_cnt++] = "-load";
+          cc_params[cc_par_cnt++] = "-Xclang";
+          cc_params[cc_par_cnt++] = alloc_printf("%s/afl-llvm-pass.so", obj_path);
+        } else {
+          if (debug) {
+            DEBUGF("Instrument disabled\n");
+          }
+        }
 #endif
 
       }
@@ -1006,6 +1039,10 @@ static void edit_params(u32 argc, char **argv, char **envp) {
       cc_params[cc_par_cnt++] = "-U_FORTIFY_SOURCE";
       cc_params[cc_par_cnt++] = "-fsanitize=address";
 
+      if (getenv("AFL_SAN_RECOVER")) {
+          cc_params[cc_par_cnt++] = "-fsanitize-recover=all";
+      }
+
     } else if (getenv("AFL_USE_MSAN")) {
 
       if (getenv("AFL_USE_ASAN")) FATAL("ASAN and MSAN are mutually exclusive");
@@ -1016,6 +1053,10 @@ static void edit_params(u32 argc, char **argv, char **envp) {
       cc_params[cc_par_cnt++] = "-U_FORTIFY_SOURCE";
       cc_params[cc_par_cnt++] = "-fsanitize=memory";
 
+      if (getenv("AFL_SAN_RECOVER")) {
+          cc_params[cc_par_cnt++] = "-fsanitize-recover=all";
+      }
+
     }
 
   }
@@ -1023,8 +1064,12 @@ static void edit_params(u32 argc, char **argv, char **envp) {
   if (getenv("AFL_USE_UBSAN")) {
 
     cc_params[cc_par_cnt++] = "-fsanitize=undefined";
-    cc_params[cc_par_cnt++] = "-fsanitize-undefined-trap-on-error";
-    cc_params[cc_par_cnt++] = "-fno-sanitize-recover=all";
+    if (getenv("AFL_SAN_RECOVER")) {
+        cc_params[cc_par_cnt++] = "-fsanitize-recover=all";
+    } else {
+        cc_params[cc_par_cnt++] = "-fsanitize-undefined-trap-on-error";
+        cc_params[cc_par_cnt++] = "-fno-sanitize-recover=all";
+    }
     cc_params[cc_par_cnt++] = "-fno-omit-frame-pointer";
 
   }

@@ -108,3 +108,15 @@ inline u64 hash64(u8 *key, u32 len, u64 seed) {
 
 }
 
+#ifdef _DEBUG
+u32 hash32_xxh32(u8 *key, u32 len, u32 seed) {
+
+#else
+inline u32 hash32_xxh32(u8 *key, u32 len, u32 seed) {
+
+#endif
+
+  (void)seed;
+  return (u32)XXH32(key, len, seed);
+
+}

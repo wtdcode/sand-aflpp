@@ -71,6 +71,12 @@
 /* Maximum allowed fails per CMP value. Default: 128 */
 #define CMPLOG_FAIL_MAX 96
 
+/* 
+ * Effective fuzzing with selective feeding inputs
+ */
+
+#define MAX_EXTRA_SAN_BINARY 4
+
 /* -------------------------------------*/
 /* Now non-cmplog configuration options */
 /* -------------------------------------*/
@@ -463,6 +469,9 @@
 /* AFL RedQueen */
 
 #define CMPLOG_SHM_ENV_VAR "__AFL_CMPLOG_SHM_ID"
+
+/* ASAN SHM ID */
+#define AFL_ASAN_FUZZ_SHM_ENV_VAR "__AFL_ASAN_SHM_ID"
 
 /* CPU Affinity lockfile env var */
 

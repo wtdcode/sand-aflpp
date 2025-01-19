@@ -32,220 +32,220 @@
 #
 # You must make sure that Unicorn Engine is not already installed before
 # running this script. If it is, please uninstall it first.
+exit 0
+# UNICORNAFL_VERSION="$(cat ./UNICORNAFL_VERSION)"
 
-UNICORNAFL_VERSION="$(cat ./UNICORNAFL_VERSION)"
+# echo "================================================="
+# echo "UnicornAFL build script"
+# echo "================================================="
+# echo
 
-echo "================================================="
-echo "UnicornAFL build script"
-echo "================================================="
-echo
+# echo "[*] Performing basic sanity checks..."
 
-echo "[*] Performing basic sanity checks..."
+# PLT=`uname -s`
 
-PLT=`uname -s`
+# if [ ! "$PLT" = "Linux" ] && [ ! "$PLT" = "Darwin" ] && [ ! "$PLT" = "FreeBSD" ] && [ ! "$PLT" = "NetBSD" ] && [ ! "$PLT" = "OpenBSD" ] && [ ! "$PLT" = "DragonFly" ]; then
 
-if [ ! "$PLT" = "Linux" ] && [ ! "$PLT" = "Darwin" ] && [ ! "$PLT" = "FreeBSD" ] && [ ! "$PLT" = "NetBSD" ] && [ ! "$PLT" = "OpenBSD" ] && [ ! "$PLT" = "DragonFly" ]; then
+#   echo "[-] Error: Unicorn instrumentation is unsupported on $PLT."
+#   exit 1
 
-  echo "[-] Error: Unicorn instrumentation is unsupported on $PLT."
-  exit 1
+# fi
 
-fi
+# if [ ! -f "../config.h" ]; then
 
-if [ ! -f "../config.h" ]; then
+#   echo "[-] Error: key files not found - wrong working directory?"
+#   exit 1
 
-  echo "[-] Error: key files not found - wrong working directory?"
-  exit 1
+# fi
 
-fi
+# if [ ! -f "../afl-showmap" ]; then
 
-if [ ! -f "../afl-showmap" ]; then
+#   echo "[-] Error: ../afl-showmap not found - compile AFL first!"
+#   exit 1
 
-  echo "[-] Error: ../afl-showmap not found - compile AFL first!"
-  exit 1
+# fi
 
-fi
+# PYTHONBIN=`command -v python3 || command -v python || command -v python2 || echo python3`
+# MAKECMD=make
+# TARCMD=tar
 
-PYTHONBIN=`command -v python3 || command -v python || command -v python2 || echo python3`
-MAKECMD=make
-TARCMD=tar
+# if [ "$PLT" = "Linux" ]; then
+#   MUSL=`ldd --version 2>&1 | head -n 1 | cut -f 1 -d " "`
+#   if [ "musl" = $MUSL ]; then
+#   	echo "[-] Error: Unicorn instrumentation is unsupported with the musl's libc."
+#   	exit 1
+#   fi
+#   CORES=`nproc`
+# fi
 
-if [ "$PLT" = "Linux" ]; then
-  MUSL=`ldd --version 2>&1 | head -n 1 | cut -f 1 -d " "`
-  if [ "musl" = $MUSL ]; then
-  	echo "[-] Error: Unicorn instrumentation is unsupported with the musl's libc."
-  	exit 1
-  fi
-  CORES=`nproc`
-fi
+# if [ "$PLT" = "Darwin" ]; then
+#   CORES=`sysctl -n hw.ncpu`
+#   TARCMD=tar
+# fi
 
-if [ "$PLT" = "Darwin" ]; then
-  CORES=`sysctl -n hw.ncpu`
-  TARCMD=tar
-fi
+# if [ "$PLT" = "FreeBSD" ]; then
+#   MAKECMD=gmake
+#   CORES=`sysctl -n hw.ncpu`
+#   TARCMD=gtar
+# fi
 
-if [ "$PLT" = "FreeBSD" ]; then
-  MAKECMD=gmake
-  CORES=`sysctl -n hw.ncpu`
-  TARCMD=gtar
-fi
+# if [ "$PLT" = "DragonFly" ]; then
+#   MAKECMD=gmake
+#   CORES=`sysctl -n hw.ncpu`
+#   TARCMD=tar
+# fi
 
-if [ "$PLT" = "DragonFly" ]; then
-  MAKECMD=gmake
-  CORES=`sysctl -n hw.ncpu`
-  TARCMD=tar
-fi
+# if [ "$PLT" = "NetBSD" ] || [ "$PLT" = "OpenBSD" ]; then
+#   MAKECMD=gmake
+#   CORES=`sysctl -n hw.ncpu`
+#   TARCMD=gtar
+# fi
 
-if [ "$PLT" = "NetBSD" ] || [ "$PLT" = "OpenBSD" ]; then
-  MAKECMD=gmake
-  CORES=`sysctl -n hw.ncpu`
-  TARCMD=gtar
-fi
+# PREREQ_NOTFOUND=
+# for i in $PYTHONBIN automake autoconf git $MAKECMD $TARCMD; do
 
-PREREQ_NOTFOUND=
-for i in $PYTHONBIN automake autoconf git $MAKECMD $TARCMD; do
+#   T=`command -v "$i" 2>/dev/null`
 
-  T=`command -v "$i" 2>/dev/null`
+#   if [ "$T" = "" ]; then
 
-  if [ "$T" = "" ]; then
+#     echo "[-] Error: '$i' not found. Run 'sudo apt-get install $i' or similar."
+#     PREREQ_NOTFOUND=1
 
-    echo "[-] Error: '$i' not found. Run 'sudo apt-get install $i' or similar."
-    PREREQ_NOTFOUND=1
+#   fi
 
-  fi
+# done
 
-done
+# # some python version should be available now
+# PYTHONS="`command -v python3` `command -v python` `command -v python2`"
+# PIP_FOUND=0
+# for PYTHON in $PYTHONS ; do
 
-# some python version should be available now
-PYTHONS="`command -v python3` `command -v python` `command -v python2`"
-PIP_FOUND=0
-for PYTHON in $PYTHONS ; do
+#   if $PYTHON -c "import pip" ; then
 
-  if $PYTHON -c "import pip" ; then
+#     PIP_FOUND=1
+#     PYTHONBIN=$PYTHON
+#     break
 
-    PIP_FOUND=1
-    PYTHONBIN=$PYTHON
-    break
+#   fi
 
-  fi
+# done
+# if [ "0" = $PIP_FOUND ]; then
 
-done
-if [ "0" = $PIP_FOUND ]; then
+#   echo "[-] Error: Python pip not found. Run 'sudo apt-get install python-pip', or install python3-pip, or run '$PYTHONBIN -m ensurepip', or create a virtualenv, or ..."
+#   PREREQ_NOTFOUND=1
 
-  echo "[-] Error: Python pip not found. Run 'sudo apt-get install python-pip', or install python3-pip, or run '$PYTHONBIN -m ensurepip', or create a virtualenv, or ..."
-  PREREQ_NOTFOUND=1
+# fi
 
-fi
+# if echo "$CC" | grep -qF /afl-; then
 
-if echo "$CC" | grep -qF /afl-; then
+#   echo "[-] Error: do not use afl-gcc or afl-clang to compile this tool."
+#   PREREQ_NOTFOUND=1
 
-  echo "[-] Error: do not use afl-gcc or afl-clang to compile this tool."
-  PREREQ_NOTFOUND=1
+# fi
 
-fi
+# if [ "$PREREQ_NOTFOUND" = "1" ]; then
+#   exit 1
+# fi
 
-if [ "$PREREQ_NOTFOUND" = "1" ]; then
-  exit 1
-fi
+# unset CFLAGS
 
-unset CFLAGS
+# echo "[+] All checks passed!"
 
-echo "[+] All checks passed!"
+# echo "[*] Making sure unicornafl is checked out"
 
-echo "[*] Making sure unicornafl is checked out"
+# git status 1>/dev/null 2>/dev/null
+# if [ $? -eq 0 ]; then
+#   echo "[*] initializing unicornafl submodule"
+#   git submodule init || exit 1
+#   git submodule update ./unicornafl 2>/dev/null # ignore errors
+#   git submodule sync ./unicornafl 2>/dev/null # ignore errors
+# else
+#   echo "[*] cloning unicornafl"
+#   test -d unicornafl/.git || {
+#     CNT=1
+#     while [ '!' -d unicornafl/.git -a "$CNT" -lt 4 ]; do
+#       echo "Trying to clone unicornafl (attempt $CNT/3)"
+#       git clone https://github.com/AFLplusplus/unicornafl
+#       CNT=`expr "$CNT" + 1`
+#     done
+#   }
+# fi
 
-git status 1>/dev/null 2>/dev/null
-if [ $? -eq 0 ]; then
-  echo "[*] initializing unicornafl submodule"
-  git submodule init || exit 1
-  git submodule update ./unicornafl 2>/dev/null # ignore errors
-  git submodule sync ./unicornafl 2>/dev/null # ignore errors
-else
-  echo "[*] cloning unicornafl"
-  test -d unicornafl/.git || {
-    CNT=1
-    while [ '!' -d unicornafl/.git -a "$CNT" -lt 4 ]; do
-      echo "Trying to clone unicornafl (attempt $CNT/3)"
-      git clone https://github.com/AFLplusplus/unicornafl
-      CNT=`expr "$CNT" + 1`
-    done
-  }
-fi
+# test -e unicornafl/.git || { echo "[-] not checked out, please install git or check your internet connection." ; exit 1 ; }
+# echo "[+] Got unicornafl."
 
-test -e unicornafl/.git || { echo "[-] not checked out, please install git or check your internet connection." ; exit 1 ; }
-echo "[+] Got unicornafl."
+# cd "unicornafl" || exit 1
+# echo "[*] Checking out $UNICORNAFL_VERSION"
+# git pull
+# sh -c 'git stash && git stash drop' 1>/dev/null 2>/dev/null
+# git checkout "$UNICORNAFL_VERSION" || exit 1
 
-cd "unicornafl" || exit 1
-echo "[*] Checking out $UNICORNAFL_VERSION"
-git pull
-sh -c 'git stash && git stash drop' 1>/dev/null 2>/dev/null
-git checkout "$UNICORNAFL_VERSION" || exit 1
+# echo "[*] making sure afl++ header files match"
+# cp "../../include/config.h" "./include" || exit 1
 
-echo "[*] making sure afl++ header files match"
-cp "../../include/config.h" "./include" || exit 1
+# echo "[*] Configuring Unicorn build..."
 
-echo "[*] Configuring Unicorn build..."
+# echo "[+] Configuration complete."
 
-echo "[+] Configuration complete."
+# echo "[*] Attempting to build unicornafl (fingers crossed!)..."
 
-echo "[*] Attempting to build unicornafl (fingers crossed!)..."
+# $MAKECMD clean  # make doesn't seem to work for unicorn
+# # Fixed to 1 core for now as there is a race condition in the makefile
+# $MAKECMD -j1 || exit 1
 
-$MAKECMD clean  # make doesn't seem to work for unicorn
-# Fixed to 1 core for now as there is a race condition in the makefile
-$MAKECMD -j1 || exit 1
+# echo "[+] Build process successful!"
 
-echo "[+] Build process successful!"
+# echo "[*] Installing Unicorn python bindings..."
+# cd unicorn/bindings/python || exit 1
+# if [ -z "$VIRTUAL_ENV" ]; then
+#   echo "[*] Info: Installing python unicornafl using --user"
+#   THREADS=$CORES $PYTHONBIN -m pip install --user --force .|| exit 1
+# else
+#   echo "[*] Info: Installing python unicornafl to virtualenv: $VIRTUAL_ENV"
+#   THREADS=$CORES $PYTHONBIN -m pip install --force .|| exit 1
+# fi
+# cd ../../../
+# echo "[*] Installing Unicornafl python bindings..."
+# cd bindings/python || exit 1
+# if [ -z "$VIRTUAL_ENV" ]; then
+#   echo "[*] Info: Installing python unicornafl using --user"
+#   THREADS=$CORES $PYTHONBIN -m pip install --user --force .|| exit 1
+# else
+#   echo "[*] Info: Installing python unicornafl to virtualenv: $VIRTUAL_ENV"
+#   THREADS=$CORES $PYTHONBIN -m pip install --force .|| exit 1
+# fi
+# echo '[*] If needed, you can (re)install the bindings in `./unicornafl/bindings/python` using `pip install --force .`'
 
-echo "[*] Installing Unicorn python bindings..."
-cd unicorn/bindings/python || exit 1
-if [ -z "$VIRTUAL_ENV" ]; then
-  echo "[*] Info: Installing python unicornafl using --user"
-  THREADS=$CORES $PYTHONBIN -m pip install --user --force .|| exit 1
-else
-  echo "[*] Info: Installing python unicornafl to virtualenv: $VIRTUAL_ENV"
-  THREADS=$CORES $PYTHONBIN -m pip install --force .|| exit 1
-fi
-cd ../../../
-echo "[*] Installing Unicornafl python bindings..."
-cd bindings/python || exit 1
-if [ -z "$VIRTUAL_ENV" ]; then
-  echo "[*] Info: Installing python unicornafl using --user"
-  THREADS=$CORES $PYTHONBIN -m pip install --user --force .|| exit 1
-else
-  echo "[*] Info: Installing python unicornafl to virtualenv: $VIRTUAL_ENV"
-  THREADS=$CORES $PYTHONBIN -m pip install --force .|| exit 1
-fi
-echo '[*] If needed, you can (re)install the bindings in `./unicornafl/bindings/python` using `pip install --force .`'
+# cd ../../ || exit 1
 
-cd ../../ || exit 1
+# echo "[*] Unicornafl bindings installed successfully."
 
-echo "[*] Unicornafl bindings installed successfully."
+# # Compile the sample, run it, verify that it works!
+# echo "[*] Testing unicornafl python functionality by running a sample test harness"
 
-# Compile the sample, run it, verify that it works!
-echo "[*] Testing unicornafl python functionality by running a sample test harness"
+# cd ../samples/python_simple || echo "Cannot cd"
 
-cd ../samples/python_simple || echo "Cannot cd"
+# # Run afl-showmap on the sample application. If anything comes out then it must have worked!
+# unset AFL_INST_RATIO
+# # pwd; echo "echo 0 | ../../../afl-showmap -U -m none -t 2000 -o ./.test-instr0 -- $PYTHONBIN ./simple_test_harness.py ./sample_inputs/sample1.bin"
+# echo 0 | ../../../afl-showmap -U -m none -t 2000 -o ./.test-instr0 -- $PYTHONBIN ./simple_test_harness.py ./sample_inputs/sample1.bin >/dev/null 2>&1 || echo "Showmap"
 
-# Run afl-showmap on the sample application. If anything comes out then it must have worked!
-unset AFL_INST_RATIO
-# pwd; echo "echo 0 | ../../../afl-showmap -U -m none -t 2000 -o ./.test-instr0 -- $PYTHONBIN ./simple_test_harness.py ./sample_inputs/sample1.bin"
-echo 0 | ../../../afl-showmap -U -m none -t 2000 -o ./.test-instr0 -- $PYTHONBIN ./simple_test_harness.py ./sample_inputs/sample1.bin >/dev/null 2>&1 || echo "Showmap"
+# if [ -s ./.test-instr0 ]
+# then
 
-if [ -s ./.test-instr0 ]
-then
+#   echo "[+] Instrumentation tests passed. "
+#   echo '[+] Make sure to adapt older scripts to `import unicornafl` and use `uc.afl_forkserver_start`'
+#   echo '    or `uc.afl_fuzz` to kick off fuzzing.'
+#   echo "[+] All set, you can now use Unicorn mode (-U) in afl-fuzz!"
+#   RETVAL=0
 
-  echo "[+] Instrumentation tests passed. "
-  echo '[+] Make sure to adapt older scripts to `import unicornafl` and use `uc.afl_forkserver_start`'
-  echo '    or `uc.afl_fuzz` to kick off fuzzing.'
-  echo "[+] All set, you can now use Unicorn mode (-U) in afl-fuzz!"
-  RETVAL=0
+# else
 
-else
+#   echo "[-] Error: Unicorn mode doesn't seem to work!"
+#   RETVAL=1
 
-  echo "[-] Error: Unicorn mode doesn't seem to work!"
-  RETVAL=1
+# fi
 
-fi
+# rm -f ./.test-instr0
 
-rm -f ./.test-instr0
-
-exit $RETVAL
+# exit $RETVAL

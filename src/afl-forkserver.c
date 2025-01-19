@@ -1468,18 +1468,21 @@ afl_fsrv_run_target(afl_forkserver_t *fsrv, u32 timeout,
      must prevent any earlier operations from venturing into that
      territory. */
 
+  /* If the binary is not instrumented, we don't care about the coverage. Make it a bit faster */
+  if (!fsrv->san_but_not_instrumented) {
 #ifdef __linux__
-  if (!fsrv->nyx_mode) {
+    if (!fsrv->nyx_mode) {
 
-    memset(fsrv->trace_bits, 0, fsrv->map_size);
-    MEM_BARRIER();
+      memset(fsrv->trace_bits, 0, fsrv->map_size);
+      MEM_BARRIER();
 
-  }
+    }
 
 #else
-  memset(fsrv->trace_bits, 0, fsrv->map_size);
-  MEM_BARRIER();
+    memset(fsrv->trace_bits, 0, fsrv->map_size);
+    MEM_BARRIER();
 #endif
+  }
 
   /* we have the fork server (or faux server) up and running
   First, tell it if the previous run timed out. */
