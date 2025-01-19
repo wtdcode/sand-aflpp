@@ -63,6 +63,14 @@ That's it!
 
 Note we will provide `Dockerfile.ASAN--` and `Dockerfile.UNIFUZZ` for evaluation reproduction.
 
+## Other AFLplusplus Schedule
+
+We use the default schedule of AFLplusplus but other schedule should be agnostic to our approach. We also evaluated SAND on the `mmopt` schedule of AFLplusplus and confirmed the similar performance.
+
+## Port SAND to other fuzzers
+
+The approach of SAND is rather simple and easy to port to other fuzzers. We once applied SAND on [Fuzzilli](https://github.com/wtdcode/sand_fuzzilli). Due to time and pages limitation, we didn't spend too much time exploring this direction.
+
 ## Cite
 
 ```bib
