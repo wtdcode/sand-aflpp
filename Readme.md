@@ -2,6 +2,8 @@
 
 This repo will contain the implementation and paper for "SAND: Decoupling Sanitization from Fuzzing for Low Overhead".
 
+Preprint is [available](https://arxiv.org/abs/2402.16497) and we will have camera-reday version uploaded shortly.
+
 ## Cite
 
 ```bib
