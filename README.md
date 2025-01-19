@@ -16,7 +16,7 @@ The original AFL++ README is available [here](./README.AFLpp.md).
 To use SAND, two binaries need to be built like cmplog:
 
 - The native binary without any sanitizer instrumented. SAND will run it during every loop and collect coverage. 
-- The sanitizer instrumented binary but _without AFL instrumentation_. SAND use this binary to check if an interesting input triggers sanitizers.
+- The sanitizer instrumented binary but _without AFL instrumentation_. SAND use this binary to check if an interesting input triggers sanitizers. Note, this binary must have fork servers enabled so `afl-clang-fast` is still needed for compilation. We will explain how to build this below.
 
 ### Build
 
