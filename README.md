@@ -28,8 +28,6 @@ docker build -t sand .
 
 If docker is not available, follow [The original AFL++ README](./README.AFLpp.md) to build SAND.
 
-Note we further provide `Dockerfile.ASAN--` and `Dockerfile.UNIFUZZ` for evaluation reproduction.
-
 ### Simple Example
 
 The following steps assume you have built the docker image and started a container. If not, do it with:
@@ -63,7 +61,7 @@ That's it!
 
 ## Evaluation Reproduction
 
-TODO
+Note we will provide `Dockerfile.ASAN--` and `Dockerfile.UNIFUZZ` for evaluation reproduction.
 
 ## Cite
 
