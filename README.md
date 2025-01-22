@@ -63,7 +63,13 @@ That's it!
 
 ## Evaluation Reproduction
 
-Note we will provide `Dockerfile.ASAN--` and `Dockerfile.UNIFUZZ` for evaluation reproduction.
+### Build All-in-one Image
+
+For easy experiment, we bundle all targets within the SAND image. Build it via:
+
+```bash
+docker build -t sand-unifuzzz -f Dockerfile.UNIFUZZ .
+```
 
 ## Other AFLplusplus Schedule
 
