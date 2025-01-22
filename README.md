@@ -11,6 +11,8 @@ The original AFL++ README is available [here](./README.AFLpp.md).
 - [sand](https://github.com/wtdcode/sand-aflpp/tree/sand): Forked from 4.05c, this branch contains the version used in our paper evaluation. Please use this for any evaluation against SAND.
 - [upstream](https://github.com/wtdcode/sand-aflpp/tree/upstream): Forked from AFLplusplus mainstream, this branch contains our efforts to port SAND to the latest AFLplusplus.
 
+Track the upstrea progress [here](https://github.com/AFLplusplus/AFLplusplus/pull/2288).
+
 ## Basic Usage
 
 To use SAND, two binaries need to be built like cmplog:
