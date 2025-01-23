@@ -63,13 +63,38 @@ That's it!
 
 ## Evaluation Reproduction
 
-### Build All-in-one Image
+### Build UNIFUZZ Image
 
 For easy experiment, we bundle all targets within the SAND image. Build it via:
 
 ```bash
 docker build -t sand-unifuzzz -f Dockerfile.UNIFUZZ .
 ```
+
+### ASAN-- baseline
+
+Firstly, build ASAN-- with:
+
+```bash
+git clone https://github.com/wtdcode/ASAN-- debloat12
+cd debloat12 && docker build -t debloat12 -f Dockerfile_ASAN-- .
+```
+
+Likewise, build another all-in-one image for the base line:
+
+```bash
+docker build -t sand-debloat12 -f Dockerfile.ASAN-- .
+```
+
+### Merge Image
+
+For ease of experiment, it is possible to merge the two images to a single image. We provide a script [merge.sh](./merge.sh) to do so:
+
+```bash
+./merge.sh sand-debloat12 sand-unifuzz
+```
+
+This will produce an image `sand-debloat12-sand-unifuzz-merged`.
 
 ## Other AFLplusplus Schedule
 

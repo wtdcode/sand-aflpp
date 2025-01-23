@@ -1,107 +1,30 @@
-#
-# This Dockerfile for AFLplusplus uses Ubuntu 22.04 jammy and
-# installs LLVM 14 for afl-clang-lto support.
-#
-# GCC 11 is used instead of 12 because genhtml for afl-cov doesn't like it.
-#
-
-FROM ubuntu:22.04 AS aflplusplus
-LABEL "maintainer"="afl++ team <afl@aflplus.plus>"
-LABEL "about"="AFLplusplus container image"
-
-### Comment out to enable these features
-# Only available on specific ARM64 boards
-ENV NO_CORESIGHT=1
-# Possible but unlikely in a docker container
-ENV NO_NYX=1
-
-### Only change these if you know what you are doing:
-# LLVM 15 does not look good so we stay at 14 to still have LTO
-ENV LLVM_VERSION=14
-# GCC 12 is producing compile errors for some targets so we stay at GCC 11
-ENV GCC_VERSION=11
-
-### No changes beyond the point unless you know what you are doing :)
-
-ARG DEBIAN_FRONTEND=noninteractive
-
-ENV NO_ARCH_OPT=1
-ENV IS_DOCKER=1
-
-RUN apt-get update && apt-get full-upgrade -y && \
-    apt-get install -y --no-install-recommends wget ca-certificates apt-utils && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN echo "deb [signed-by=/etc/apt/keyrings/llvm-snapshot.gpg.key] http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" > /etc/apt/sources.list.d/llvm.list && \
-    wget -qO /etc/apt/keyrings/llvm-snapshot.gpg.key https://apt.llvm.org/llvm-snapshot.gpg.key
-
-RUN apt-get update && \
-    apt-get -y install --no-install-recommends \
-    make cmake automake meson ninja-build bison flex \
-    git xz-utils bzip2 wget jupp nano bash-completion less vim joe ssh psmisc \
-    python3 python3-dev python3-pip python-is-python3 \
-    libtool libtool-bin libglib2.0-dev \
-    apt-transport-https gnupg dialog \
-    gnuplot-nox libpixman-1-dev \
-    gcc-${GCC_VERSION} g++-${GCC_VERSION} gcc-${GCC_VERSION}-plugin-dev gdb lcov \
-    clang-${LLVM_VERSION} clang-tools-${LLVM_VERSION} libc++1-${LLVM_VERSION} \
-    libc++-${LLVM_VERSION}-dev libc++abi1-${LLVM_VERSION} libc++abi-${LLVM_VERSION}-dev \
-    libclang1-${LLVM_VERSION} libclang-${LLVM_VERSION}-dev \
-    libclang-common-${LLVM_VERSION}-dev libclang-rt-${LLVM_VERSION}-dev libclang-cpp${LLVM_VERSION} \
-    libclang-cpp${LLVM_VERSION}-dev liblld-${LLVM_VERSION} \
-    liblld-${LLVM_VERSION}-dev liblldb-${LLVM_VERSION} liblldb-${LLVM_VERSION}-dev \
-    libllvm${LLVM_VERSION} libomp-${LLVM_VERSION}-dev libomp5-${LLVM_VERSION} \
-    lld-${LLVM_VERSION} lldb-${LLVM_VERSION} llvm-${LLVM_VERSION} \
-    llvm-${LLVM_VERSION}-dev llvm-${LLVM_VERSION}-runtime llvm-${LLVM_VERSION}-tools \
-    $([ "$(dpkg --print-architecture)" = "amd64" ] && echo gcc-${GCC_VERSION}-multilib gcc-multilib) \
-    $([ "$(dpkg --print-architecture)" = "arm64" ] && echo libcapstone-dev) && \
-    rm -rf /var/lib/apt/lists/*
-    # gcc-multilib is only used for -m32 support on x86
-    # libcapstone-dev is used for coresight_mode on arm64
-
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} 0 && \
-    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 0 && \
-    update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${LLVM_VERSION} 0 && \
-    update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${LLVM_VERSION} 0
-
-RUN wget -qO- https://sh.rustup.rs | CARGO_HOME=/etc/cargo sh -s -- -y -q --no-modify-path
-ENV PATH=$PATH:/etc/cargo/bin
-
-ENV LLVM_CONFIG=llvm-config-${LLVM_VERSION}
-ENV AFL_SKIP_CPUFREQ=1
-ENV AFL_TRY_AFFINITY=1
-ENV AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES=1
-
-RUN git clone --depth=1 https://github.com/vanhauser-thc/afl-cov && \
-    (cd afl-cov && make install) && rm -rf afl-cov
-
+FROM debloat12 AS aflplusplus
 WORKDIR /AFLplusplus
 COPY . .
 
-ARG CC=gcc-$GCC_VERSION
-ARG CXX=g++-$GCC_VERSION
+RUN update-alternatives --install /usr/local/bin/clang clang /home/llvm-12.0.0-project/ASan--Build/bin/clang 251 &&\
+    update-alternatives --install /usr/local/bin/clang++ clang++ /home/llvm-12.0.0-project/ASan--Build/bin/clang++ 251 &&\
+    update-alternatives --install /usr/local/bin/llvm-config llvm-config /home/llvm-12.0.0-project/ASan--Build/bin/llvm-config 251
 
-# Used in CI to prevent a 'make clean' which would remove the binaries to be tested
-ARG TEST_BUILD
+RUN make clean && make -j && make install
 
-RUN sed -i.bak 's/^	-/	/g' GNUmakefile && \
-    make clean && make distrib && \
-    ([ "${TEST_BUILD}" ] || (make install && make clean)) && \
-    mv GNUmakefile.bak GNUmakefile
+RUN apt-get update && \
+    apt-get -y install --no-install-recommends \
+    make cmake automake meson ninja-build bison flex unzip curl wget \
+    git xz-utils bzip2 wget jupp nano bash-completion less vim joe ssh psmisc \
+    python3 python3-dev python3-pip \
+    libtool libtool-bin libglib2.0-dev \
+    apt-transport-https gnupg dialog \
+    gnuplot-nox libpixman-1-dev
 
-RUN echo "set encoding=utf-8" > /root/.vimrc && \
-    echo ". /etc/bash_completion" >> ~/.bashrc && \
-    echo 'alias joe="joe --wordwrap --joe_state -nobackup"' >> ~/.bashrc && \
-    echo "export PS1='"'[afl++ \h] \w$(__git_ps1) \$ '"'" >> ~/.bashrc
-
-
-RUN apt update && apt install zip unzip
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y zip unzip
 
 # Followed by Unibench
 WORKDIR /
 
 ENV CC=afl-clang-fast
 ENV CXX=afl-clang-fast++
+ENV AFL_LLVM_INSTRUMENT=llvmnative
 
 RUN env
 
@@ -121,28 +44,27 @@ RUN mkdir -p /unibench/bin/justafl /unibench/bin/aflasan &&\
     mkdir -p /unibench/bin/aflasan_recover /unibench/bin/aflubsan_recover &&\
     mkdir -p /unibench/bin/aflasanubsan_recover
 
-
-RUN cd /unibench/exiv2-0.26 && cmake -DEXIV2_ENABLE_SHARED=OFF . && make -j && cp bin/exiv2 /unibench/bin/justafl/ &&\
-    make clean && AFL_USE_ASAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasan/ &&\
-    make clean && AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflubsan/ &&\ 
-    make clean && AFL_USE_ASAN=1 AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasanubsan/ &&\ 
-    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflubsan_recover/ &&\ 
-    make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasan_recover/ &&\
-    make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasanubsan_recover/ &&\ 
-    make clean && AFL_USE_MSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflmsan/ &&\
-    make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasan_noins/ &&\
-    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflubsan_noins/ &&\
-    make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasanubsan_noins/ &&\
-    make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflmsan_noins/ &&\
-    make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j && cp bin/exiv2 /unibench/bin/aflmsan_recover/ &&\
-    make clean
+# MSAN removed
+# Debloat segfault
+# RUN cd /unibench/exiv2-0.26 && cmake -DEXIV2_ENABLE_SHARED=OFF . && make -j && cp bin/exiv2 /unibench/bin/justafl/ &&\
+#     make clean && AFL_USE_ASAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasan/ &&\
+#     make clean && AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflubsan/ &&\ 
+#     make clean && AFL_USE_ASAN=1 AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasanubsan/ &&\ 
+#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflubsan_recover/ &&\ 
+#     make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasan_recover/ &&\
+#     make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasanubsan_recover/ &&\ 
+#     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasan_noins/ &&\
+#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflubsan_noins/ &&\
+#     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 AFL_USE_UBSAN=1 make -j && cp bin/exiv2 /unibench/bin/aflasanubsan_noins/ &&\
+#     make clean
 
 
-RUN apt purge -y libglib2.0-*  && cd /tmp && echo "deb-src http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted" >> /etc/apt/sources.list &&\
-    apt update && apt install -y dpkg-dev python3-dbusmock && apt-get source libglib2.0-0 && cd glib2.0-* && sed -i "/close_range/d" meson.build &&\
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata &&\
-    apt build-dep -y libglib2.0-0 && env CC=gcc CXX=g++ DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -rfakeroot -uc -b &&\
-    cd .. && dpkg -i *.deb
+# Workaround https://github.com/moby/moby/issues/43595
+# RUN apt purge -y libglib2.0-*  && cd /tmp && echo "deb-src http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted" >> /etc/apt/sources.list &&\
+#     apt update && apt install -y dpkg-dev python3-dbusmock && apt-get source libglib2.0-0 && cd glib2.0-* && sed -i "/close_range/d" meson.build &&\
+#     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata &&\
+#     apt build-dep -y libglib2.0-0 && env CC=gcc CXX=g++ DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -rfakeroot -uc -b &&\
+#     cd .. && dpkg -i *.deb
 
 
 RUN apt update && apt install -y gtk-doc-tools libtiff-dev libpng-dev autopoint gettext &&\
@@ -321,10 +243,17 @@ RUN cd /unibench/mp3gain-1.5.2 && sed -i 's/CC=/CC?=/' Makefile &&\
     make clean
 
 # Apply two patches to avoid link error
+# https://github.com/matthiaskramm/swftools/pull/84 is manually applied
 RUN cd /unibench/swftools-0.9.2/ && ./configure &&\
     wget -c "https://github.com/matthiaskramm/swftools/pull/156.patch" &&\
     wget -c "https://github.com/matthiaskramm/swftools/pull/157.patch" &&\
-    git apply < 156.patch && git apply < 157.patch &&\
+    wget -c "https://github.com/matthiaskramm/swftools/pull/179.patch" &&\
+    git apply < 156.patch && git apply < 157.patch && git apply < 179.patch &&\
+    sed -i "s/if(pos1>=0)/if(pos1)/g" lib/pdf/xpdf/GlobalParams.cc &&\
+    sed -i "s/if(pos2>=0)/if(pos2)/g" lib/pdf/xpdf/GlobalParams.cc &&\
+    sed -i "s/int inline ActionTagSize/static int inline ActionTagSize/g" ./lib/modules/swfaction.c &&\
+    sed -i "s/byte inline PaethPredictor/static byte inline PaethPredictor/g" ./src/png2swf.c &&\
+    sed -i "s/inline gfxcolor_t transform_color/static inline gfxcolor_t transform_color/g" ./lib/devices/ops.c &&\
     make -j &&\
     cp src/wav2swf /unibench/bin/justafl/ &&\
     make clean && AFL_USE_ASAN=1 make -j &&\
@@ -355,65 +284,68 @@ RUN cd /unibench/swftools-0.9.2/ && ./configure &&\
 
 # Comment out ffmpeg for building under travis-ci
 # The memory usage seems to exceed 3GB and may make the whole build job timeout (50 minutes)
-RUN apt install -y nasm &&\
-   cd /unibench/ffmpeg-4.0.1 && ./configure --disable-shared --cc="$CC" --cxx="$CXX" &&\
-   make -j &&\
-   cp ffmpeg_g /unibench/bin/justafl/ffmpeg &&\
-   make clean && AFL_USE_ASAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflasan/ffmpeg &&\
-   make clean && AFL_USE_UBSAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflubsan/ffmpeg &&\
-   make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflasanubsan/ffmpeg &&\
-   make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflasan_recover/ffmpeg &&\
-   make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflubsan_recover/ffmpeg &&\
-   make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflasanubsan_recover/ffmpeg &&\
-   make clean && AFL_USE_MSAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflmsan/ffmpeg &&\
-   make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflasan_noins/ffmpeg &&\
-   make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflubsan_noins/ffmpeg &&\
-   make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflasanubsan_noins/ffmpeg &&\
-   make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflmsan_noins/ffmpeg &&\
-   make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
-   cp ffmpeg_g /unibench/bin/aflmsan_recover/ffmpeg &&\
-   make clean
+# Debloat coredumped
+# RUN apt install -y nasm &&\
+#    cd /unibench/ffmpeg-4.0.1 && ./configure --disable-shared --cc="$CC" --cxx="$CXX" &&\
+#    make -j &&\
+#    cp ffmpeg_g /unibench/bin/justafl/ffmpeg &&\
+#    make clean && AFL_USE_ASAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflasan/ffmpeg &&\
+#    make clean && AFL_USE_UBSAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflubsan/ffmpeg &&\
+#    make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflasanubsan/ffmpeg &&\
+#    make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflasan_recover/ffmpeg &&\
+#    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflubsan_recover/ffmpeg &&\
+#    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflasanubsan_recover/ffmpeg &&\
+#    make clean && AFL_USE_MSAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflmsan/ffmpeg &&\
+#    make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflasan_noins/ffmpeg &&\
+#    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflubsan_noins/ffmpeg &&\
+#    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflasanubsan_noins/ffmpeg &&\
+#    make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflmsan_noins/ffmpeg &&\
+#    make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
+#    cp ffmpeg_g /unibench/bin/aflmsan_recover/ffmpeg &&\
+#    make clean
 
-# RUN cd /unibench/flvmeta-1.2.1 && cmake . &&\
-#     make -j &&\
-#     cp src/flvmeta /unibench/bin/justafl/ &&\
-#     make clean && AFL_USE_ASAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflasan/ &&\
-#     make clean && AFL_USE_UBSAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflubsan/ &&\
-#     make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflasanubsan/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflasan_recover/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflubsan_recover/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflasanubsan_recover/ &&\
-#     make clean && AFL_USE_MSAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflmsan/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflasan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflubsan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflasanubsan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflmsan_noins/ &&\
-#     make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
-#     cp src/flvmeta /unibench/bin/aflmsan_recover/ &&\
-#     make clean
+RUN cd /unibench/flvmeta-1.2.1 && cmake . &&\
+    make -j &&\
+    cp src/flvmeta /unibench/bin/justafl/ &&\
+    make clean && AFL_USE_ASAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflasan/ &&\
+    make clean && AFL_USE_UBSAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflubsan/ &&\
+    make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflasanubsan/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflasan_recover/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflubsan_recover/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflasanubsan_recover/ &&\
+    make clean && AFL_USE_MSAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflmsan/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflasan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflubsan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflasanubsan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflmsan_noins/ &&\
+    make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
+    cp src/flvmeta /unibench/bin/aflmsan_recover/ &&\
+    make clean
 
+# MSAN disabled
+# Debloat coredumped
 # RUN cd /unibench/Bento4-1.5.1-628 && cmake . &&\
 #     make -j &&\
 #     cp mp42aac /unibench/bin/justafl/ &&\
@@ -429,50 +361,46 @@ RUN apt install -y nasm &&\
 #     cp mp42aac /unibench/bin/aflubsan_recover/ &&\
 #     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
 #     cp mp42aac /unibench/bin/aflasanubsan_recover/ &&\
-#     make clean && AFL_USE_MSAN=1 make -j &&\
-#     cp mp42aac /unibench/bin/aflmsan/ &&\
 #     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
 #     cp mp42aac /unibench/bin/aflasan_noins/ &&\
 #     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
 #     cp mp42aac /unibench/bin/aflubsan_noins/ &&\
 #     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
 #     cp mp42aac /unibench/bin/aflasanubsan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
-#     cp mp42aac /unibench/bin/aflmsan_noins/ &&\
-#     make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
-#     cp mp42aac /unibench/bin/aflmsan_recover/ &&\
 #     make clean
 
-# RUN cd /unibench/cflow-1.6 && ./configure &&\
-#     make -j &&\
-#     cp src/cflow /unibench/bin/justafl/ &&\
-#     make clean && AFL_USE_ASAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflasan/ &&\
-#     make clean && AFL_USE_UBSAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflubsan/ &&\
-#     make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflasanubsan/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflasan_recover/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflubsan_recover/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflasanubsan_recover/ &&\
-#     make clean && AFL_USE_MSAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflmsan/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflasan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflubsan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflasanubsan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflmsan_noins/ &&\
-#     make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
-#     cp src/cflow /unibench/bin/aflmsan_recover/ &&\
-#     make clean
+RUN cd /unibench/cflow-1.6 && ./configure &&\
+    make -j &&\
+    cp src/cflow /unibench/bin/justafl/ &&\
+    make clean && AFL_USE_ASAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflasan/ &&\
+    make clean && AFL_USE_UBSAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflubsan/ &&\
+    make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflasanubsan/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflasan_recover/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflubsan_recover/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflasanubsan_recover/ &&\
+    make clean && AFL_USE_MSAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflmsan/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflasan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflubsan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflasanubsan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
+    cp src/cflow /unibench/bin/aflmsan_noins/ &&\
+    make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
+    cp src/cflow /unibench/bin/aflmsan_recover/ &&\
+    make clean
 
-# RUN cd /unibench/ncurses-6.1 && ./configure --disable-shared &&\
+# MSAN removed
+# debloat coredump
+# RUN cd /unibench/ncurses-6.1 && CFLAGS="-lm" CXXFLAGS="-lm" ./configure --disable-shared &&\
 #     make -j &&\
 #     cp progs/tic /unibench/bin/justafl/infotocap &&\
 #     make clean && AFL_USE_ASAN=1 ASAN_OPTIONS="detect_leaks=0" make -j &&\
@@ -486,79 +414,75 @@ RUN apt install -y nasm &&\
 #     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
 #     cp progs/tic /unibench/bin/aflubsan_recover/infotocap &&\
 #     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 ASAN_OPTIONS="detect_leaks=0" make -j &&\
-#     cp progs/tic /unibench/bin/aflasanubsan_recover/infotocap &&\
-#     make clean && AFL_USE_MSAN=1 make -j &&\
 #     cp progs/tic /unibench/bin/aflmsan/infotocap &&\
 #     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 ASAN_OPTIONS="detect_leaks=0" make -j &&\
 #     cp progs/tic /unibench/bin/aflasan_noins/infotocap &&\
 #     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
 #     cp progs/tic /unibench/bin/aflubsan_noins/infotocap &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 ASAN_OPTIONS="detect_leaks=0" make -j &&\
-#     cp progs/tic /unibench/bin/aflasanubsan_noins/infotocap &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
-#     cp progs/tic /unibench/bin/aflmsan_noins/infotocap &&\
 #     make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
 #     cp progs/tic /unibench/bin/aflmsan_recover/infotocap &&\
 #     make clean
 
-# RUN cd /unibench/jq-1.5 && ./configure --disable-shared &&\
-#     make -j &&\
-#     cp jq /unibench/bin/justafl/ &&\
-#     make clean && AFL_USE_ASAN=1 make -j &&\
-#     cp jq /unibench/bin/aflasan/ &&\
-#     make clean && AFL_USE_UBSAN=1 make -j &&\
-#     cp jq /unibench/bin/aflubsan/ &&\
-#     make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp jq /unibench/bin/aflasanubsan/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
-#     cp jq /unibench/bin/aflasan_recover/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
-#     cp jq /unibench/bin/aflubsan_recover/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp jq /unibench/bin/aflasanubsan_recover/ &&\
-#     make clean && AFL_USE_MSAN=1 make -j &&\
-#     cp jq /unibench/bin/aflmsan/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
-#     cp jq /unibench/bin/aflasan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
-#     cp jq /unibench/bin/aflubsan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp jq /unibench/bin/aflasanubsan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
-#     cp jq /unibench/bin/aflmsan_noins/ &&\
-#     make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
-#     cp jq /unibench/bin/aflmsan_recover/ &&\
-#     make clean
+RUN cd /unibench/jq-1.5 && ./configure --disable-shared &&\
+    make -j &&\
+    cp jq /unibench/bin/justafl/ &&\
+    make clean && AFL_USE_ASAN=1 make -j &&\
+    cp jq /unibench/bin/aflasan/ &&\
+    make clean && AFL_USE_UBSAN=1 make -j &&\
+    cp jq /unibench/bin/aflubsan/ &&\
+    make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp jq /unibench/bin/aflasanubsan/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
+    cp jq /unibench/bin/aflasan_recover/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
+    cp jq /unibench/bin/aflubsan_recover/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp jq /unibench/bin/aflasanubsan_recover/ &&\
+    make clean && AFL_USE_MSAN=1 make -j &&\
+    cp jq /unibench/bin/aflmsan/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
+    cp jq /unibench/bin/aflasan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
+    cp jq /unibench/bin/aflubsan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp jq /unibench/bin/aflasanubsan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
+    cp jq /unibench/bin/aflmsan_noins/ &&\
+    make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
+    cp jq /unibench/bin/aflmsan_recover/ &&\
+    make clean
 
-# RUN cd /unibench/mujs-1.0.2 &&\
-#     build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/justafl/ &&\
-#     make clean && AFL_USE_ASAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflasan/ &&\
-#     make clean && AFL_USE_UBSAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflubsan/ &&\
-#     make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflasanubsan/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflasan_recover/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflubsan_recover/ &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflasanubsan_recover/ &&\
-#     make clean && AFL_USE_MSAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflmsan/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflasan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflubsan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflasanubsan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflmsan_noins/ &&\
-#     make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 build=debug make -j &&\
-#     cp build/debug/mujs /unibench/bin/aflmsan_recover/ &&\
-#     make clean
+RUN cd /unibench/mujs-1.0.2 &&\
+    build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/justafl/ &&\
+    make clean && AFL_USE_ASAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflasan/ &&\
+    make clean && AFL_USE_UBSAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflubsan/ &&\
+    make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflasanubsan/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflasan_recover/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflubsan_recover/ &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflasanubsan_recover/ &&\
+    make clean && AFL_USE_MSAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflmsan/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflasan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflubsan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflasanubsan_noins/ &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflmsan_noins/ &&\
+    make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 build=debug make -j &&\
+    cp build/debug/mujs /unibench/bin/aflmsan_recover/ &&\
+    make clean
 
+# MSAN removed
+# debloat coredump
 # RUN cd /unibench/xpdf-4.00 && CXXFLAGS="-gdwarf-4" cmake . &&\
 #     sed -i "327,337d;" xpdf/SecurityHandler.cc &&\
 #     sed -i "327i void *StandardSecurityHandler::getAuthData() { return NULL; }" xpdf/SecurityHandler.cc &&\
@@ -575,8 +499,6 @@ RUN apt install -y nasm &&\
 #     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
 #     cp xpdf/pdftotext /unibench/bin/aflubsan_recover/ &&\
 #     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp xpdf/pdftotext /unibench/bin/aflasanubsan_recover/ &&\
-#     make clean && AFL_USE_MSAN=1 make -j &&\
 #     cp xpdf/pdftotext /unibench/bin/aflmsan/ &&\
 #     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
 #     cp xpdf/pdftotext /unibench/bin/aflasan_noins/ &&\
@@ -584,13 +506,10 @@ RUN apt install -y nasm &&\
 #     cp xpdf/pdftotext /unibench/bin/aflubsan_noins/ &&\
 #     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
 #     cp xpdf/pdftotext /unibench/bin/aflasanubsan_noins/ &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
-#     cp xpdf/pdftotext /unibench/bin/aflmsan_noins/ &&\
-#     make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
-#     cp xpdf/pdftotext /unibench/bin/aflmsan_recover/ &&\
 #     make clean
 
-# #--disable-amalgamation can be used for coverage build
+#--disable-amalgamation can be used for coverage build
+# Debloat fails to build / looks like missing -lpthread / disable to unstable
 # RUN apt install -y tcl-dev &&\
 #     cd /unibench/SQLite-3.8.9 && ./configure --disable-shared &&\ 
 #     make -j &&\
@@ -600,13 +519,13 @@ RUN apt install -y nasm &&\
 #     make clean && AFL_USE_UBSAN=1 make -j &&\
 #     cp sqlite3 /unibench/bin/aflubsan/ &&\
 #     make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 ASAN_OPTIONS="detect_leaks=0" make -j &&\
-#     cp sqlite3 /unibench/bin/aflasanubsan/ &&\
+#     cp sqlite3 /unibench/bin/aflubsan/ &&\
 #     make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 ASAN_OPTIONS="detect_leaks=0" make -j &&\
 #     cp sqlite3 /unibench/bin/aflasan_recover/ &&\
 #     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
 #     cp sqlite3 /unibench/bin/aflubsan_recover/ &&\
 #     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 ASAN_OPTIONS="detect_leaks=0" make -j &&\
-#     cp sqlite3 /unibench/bin/aflasanubsan_recover/ &&\
+#     cp sqlite3 /unibench/bin/aflubsan_recover/ &&\
 #     make clean && AFL_USE_MSAN=1 make -j &&\
 #     cp sqlite3 /unibench/bin/aflmsan/ &&\
 #     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 ASAN_OPTIONS="detect_leaks=0" make -j &&\
@@ -621,13 +540,14 @@ RUN apt install -y nasm &&\
 #     cp sqlite3 /unibench/bin/aflmsan_recover/ &&\
 #     make clean
 
+# Debloat crashes in asaubsan libiberty
 # RUN apt install -y texinfo && cd /unibench/binutils-5279478 &&\
-#     ./configure --disable-shared &&\
-#     for i in bfd libiberty opcodes libctf; do cd $i; ./configure --disable-shared && make -j; cd ..; done  &&\
+#     CFLAGS="-ldl" CXXFLAGS="-ldl" ./configure --disable-shared &&\
+#     for i in bfd libiberty opcodes libctf; do cd $i; CFLAGS="-ldl" CXXFLAGS="-ldl" ./configure --disable-shared && make -j; cd ..; done  &&\
 #     cp bfd/doc/chew bfd/doc/chew.good &&\
 #     sed -i 's/.\/\$(MKDOC)/.\/chew.good/g' bfd/doc/Makefile &&\
 #     cd binutils  &&\
-#     ./configure --disable-shared &&\
+#     CFLAGS="-ldl" CXXFLAGS="-ldl" ./configure --disable-shared &&\
 #     make nm-new &&\
 #     cp nm-new /unibench/bin/justafl/nm &&\
 #     cd /unibench/binutils-5279478 &&\
@@ -691,8 +611,9 @@ RUN apt install -y nasm &&\
 #     cp nm-new /unibench/bin/aflmsan_recover/nm &&\
 #     cd .. && make distclean
 
-# # Workaround MSAN
-# RUN cd /unibench/binutils-2.28 && ./configure --disable-shared &&\
+# Workaround MSAN
+# Debloat coredump
+# RUN cd /unibench/binutils-2.28 && CFLAGS="-ldl" CXXFLAGS="-ldl" ./configure --disable-shared &&\
 #     make -j &&\
 #     cp bfd/doc/chew bfd/doc/chew.good &&\
 #     sed -i 's/.\/\$(MKDOC)/.\/chew.good/g' bfd/doc/Makefile &&\
@@ -727,80 +648,80 @@ RUN apt install -y nasm &&\
 #     make clean
     
 
-# RUN cd /unibench/libpcap-1.8.1 && ./configure --disable-shared &&\
-#     make -j &&\
-#     cd /unibench/tcpdump-4.8.1 && ./configure &&\
-#     make -j &&\
-#     cp tcpdump /unibench/bin/justafl/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_USE_ASAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_USE_ASAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflasan/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_USE_UBSAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_USE_UBSAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflubsan/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflasanubsan/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflasan_recover/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflubsan_recover/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflasanubsan_recover/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_USE_MSAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_USE_MSAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflmsan/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflasan_noins/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflubsan_noins/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflasanubsan_noins/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflmsan_noins/ &&\
-#     cd /unibench/libpcap-1.8.1 &&\
-#     make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
-#     cd /unibench/tcpdump-4.8.1 &&\
-#     make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
-#     cp tcpdump /unibench/bin/aflmsan_recover/ &&\
-#     make clean && cd /unibench/libpcap-1.8.1 && make clean
+RUN cd /unibench/libpcap-1.8.1 && ./configure --disable-shared &&\
+    make -j &&\
+    cd /unibench/tcpdump-4.8.1 && ./configure &&\
+    make -j &&\
+    cp tcpdump /unibench/bin/justafl/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_USE_ASAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_USE_ASAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflasan/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_USE_UBSAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_USE_UBSAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflubsan/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflasanubsan/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_ASAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflasan_recover/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflubsan_recover/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_SAN_RECOVER=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflasanubsan_recover/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_USE_MSAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_USE_MSAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflmsan/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_ASAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflasan_noins/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflubsan_noins/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_UBSAN=1 AFL_USE_ASAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflasanubsan_noins/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_SAN_NO_INST=1 AFL_USE_MSAN=1 make -j &&\
+    cp tcpdump /unibench/bin/aflmsan_noins/ &&\
+    cd /unibench/libpcap-1.8.1 &&\
+    make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
+    cd /unibench/tcpdump-4.8.1 &&\
+    make clean && AFL_USE_MSAN=1 AFL_SAN_RECOVER=1 make -j &&\
+    cp tcpdump /unibench/bin/aflmsan_recover/ &&\
+    make clean && cd /unibench/libpcap-1.8.1 && make clean
 
 
-# RUN ls -alh /unibench/bin/aflmsan
+RUN ls -alh /unibench/bin/aflmsan
 
-# RUN ls -alh /unibench/bin/aflasan
+RUN ls -alh /unibench/bin/aflasan
 
-# RUN ls -alh /unibench/bin/aflasan_noins
+RUN ls -alh /unibench/bin/aflasan_noins
 
-# RUN ls -alh /unibench/bin/aflmsan_noins
+RUN ls -alh /unibench/bin/aflmsan_noins
 
-# RUN ls -alh /unibench/bin/justafl
+RUN ls -alh /unibench/bin/justafl
