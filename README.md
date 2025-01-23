@@ -63,6 +63,17 @@ That's it!
 
 ## Evaluation Reproduction
 
+Building the evaluation images might take ~10-30 hours depending on your CPU and memory configuration.
+
+Some building process might has a dependency on the host kernel version and our evaluation environment is:
+
+```bash
+> uname -a
+Linux <redacted> 5.4.0-200-generic #220-Ubuntu SMP Fri Sep 27 13:19:16 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
+> cat /etc/issue
+<redacted> Ubuntu 20.04 (x86_64)
+```
+
 ### Build UNIFUZZ Image
 
 For easy experiment, we bundle all targets within the SAND image. Build it via:
@@ -95,6 +106,10 @@ For ease of experiment, it is possible to merge the two images to a single image
 ```
 
 This will produce an image `sand-debloat12-sand-unifuzz-merged`.
+
+### Start Experiments
+
+Assume you have built the two images above, you could refer to [experiments](./experiments/) to reproduce our fuzzing experiments.
 
 ## Other AFLplusplus Schedule
 
