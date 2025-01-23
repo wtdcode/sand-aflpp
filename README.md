@@ -68,7 +68,7 @@ That's it!
 For easy experiment, we bundle all targets within the SAND image. Build it via:
 
 ```bash
-docker build -t sand-unifuzzz -f Dockerfile.UNIFUZZ .
+docker build -t sand-unifuzz -f Dockerfile.UNIFUZZ .
 ```
 
 ### ASAN-- baseline
