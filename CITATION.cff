@@ -1,27 +1,28 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-  - given-names: Marc
-    family-names: Heuse
-    email: mh@mh-sec.de
-  - given-names: Heiko
-    family-names: Eißfeldt
-    email: heiko.eissfeldt@hexco.de
-  - given-names: Andrea
-    family-names: Fioraldi
-    email: andreafioraldi@gmail.com
-  - given-names: Dominik
-    family-names: Maier
-    email: mail@dmnk.co
-title: "AFL++"
-version: 4.00c
+  - given-names: Ziqiao
+    family-names: Kong
+    email: ziqiao001@e.ntu.edu.sg
+  - given-names: Shaohua
+    family-names: Li
+    email: shaohuali@cse.cuhk.edu.hk
+  - given-names: Heqing
+    family-names: Huang
+    email: heqhuang@cityu.edu.hk
+  - given-names: Zhendong
+    family-names: Su
+    email: zhendong.su@inf.ethz.ch
+title: "SAND: Decoupling Sanitization from Fuzzing for Low Overhead"
+version: 1.0
 type: software
-date-released: 2022-01-26
-url: "https://github.com/AFLplusplus/AFLplusplus"
+date-released: 2025-01-19
+url: "https://github.com/wtdcode/sand-aflpp"
 keywords:
   - fuzzing
   - fuzzer
   - fuzz-testing
+  - sanitizers
   - instrumentation
   - afl-fuzz
   - qemu
