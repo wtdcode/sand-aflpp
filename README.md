@@ -24,8 +24,10 @@ To use SAND, two binaries need to be built like cmplog:
 
 Docker is highly recommened to reproduce the build. Simply do:
 
-```
+```bash
 docker build -t sand .
+# alternatively
+# docker pull lazymio/sand
 ```
 
 If docker is not available, follow [The original AFL++ README](./README.AFLpp.md) to build SAND.
@@ -34,8 +36,10 @@ If docker is not available, follow [The original AFL++ README](./README.AFLpp.md
 
 The following steps assume you have built the docker image and started a container. If not, do it with:
 
-```
+```bash
 docker run --rm -it sand
+# alternatively
+# docker run --rm -it lazymio/sand
 ```
 
 Take `test_instr.c` as an example, firstly build the native binary:
@@ -82,6 +86,12 @@ For easy experiment, we bundle all targets within the SAND image. Build it via:
 
 ```bash
 docker build -t sand-unifuzz -f Dockerfile.UNIFUZZ .
+```
+
+To save time, we upload a public reproduction docker image:
+
+```bash
+docker pull lazymio/sand-unifuzz
 ```
 
 ### ASAN-- baseline
