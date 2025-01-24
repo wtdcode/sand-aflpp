@@ -94,7 +94,7 @@ To save time, we upload a public reproduction docker image:
 docker pull lazymio/sand-unifuzz
 ```
 
-The seeds of UNIFUZZ is available [here](https://github.com/unifuzz/seeds)
+The seeds of UNIFUZZ is available [here](https://github.com/unifuzz/seeds). We use the seeds under `general_evaluation` folder.
 
 ### ASAN-- baseline
 
