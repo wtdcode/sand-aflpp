@@ -59,7 +59,7 @@ echo "a" > /tmp/test/a
 AFL_NO_UI=1 AFL_SKIP_CPUFREQ=1 afl-fuzz -i /tmp/test -o /tmp/out -a ./san -- ./native -f @@
 ```
 
-That's it!
+That's it! We also have detailed usage and caveats [here](./docs/SAND.md).
 
 ## Evaluation Reproduction
 
