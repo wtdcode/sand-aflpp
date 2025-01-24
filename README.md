@@ -116,7 +116,7 @@ bash
 ./update-unifuzz.sh sand-debloat12-sand-unifuzz-merged sand
 ```
 
-This builds an image named `sand` from current directory and copies targets from `sand-debloat12-sand-unifuzz-merged`
+This builds an image named `sand-from-sand-debloat12-sand-unifuzz-merged` from current directory and copies targets from `sand-debloat12-sand-unifuzz-merged`
 
 ### Start Experiments
 
