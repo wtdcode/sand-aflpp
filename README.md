@@ -74,6 +74,8 @@ Linux <redacted> 5.4.0-200-generic #220-Ubuntu SMP Fri Sep 27 13:19:16 UTC 2024 
 <redacted> Ubuntu 20.04 (x86_64)
 ```
 
+Please note, a recent kernel introduces changes that [might break ASAN instrumentation](https://github.com/google/sanitizers/issues/1614). This causes issues because the build process of some programs contains bootstraping, e.g. firstly building a helper program and further building other code by the helper program. ASAN instrumentation could crash these helper programs. A quick workaround is: `sudo sysctl vm.mmap_rnd_bits=28`
+
 ### Build UNIFUZZ Image
 
 For easy experiment, we bundle all targets within the SAND image. Build it via:
