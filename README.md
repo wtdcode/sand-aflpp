@@ -94,6 +94,8 @@ To save time, we upload a public reproduction docker image:
 docker pull lazymio/sand-unifuzz
 ```
 
+The seeds of UNIFUZZ is available [here](https://github.com/unifuzz/seeds)
+
 ### ASAN-- baseline
 
 Firstly, build ASAN-- with:
@@ -121,8 +123,7 @@ This will produce an image `sand-debloat12-sand-unifuzz-merged`.
 
 In addition, it is painful to rebuild all UNIFUZZ and Debloat targets every time you make a few modifications. [update-unifuzz.sh](./update-unifuzz.sh) is designed to only update SAND and copy targets from existing images. 
 
-```
-bash
+```bash
 ./update-unifuzz.sh sand-debloat12-sand-unifuzz-merged sand
 ```
 
