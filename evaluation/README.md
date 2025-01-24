@@ -2,7 +2,12 @@
 
 ## Build images
 
-Building the evaluation images might take ~10-30 hours depending on your CPU and memory configuration.
+Building the evaluation images might take ~10-30 hours depending on your CPU and memory configuration. **To facilitate reproduction, we provide prebuilt docker images for all steps**:
+
+- [lazymio/sand](https://hub.docker.com/r/lazymio/sand): Base image of SAND
+- [lazymio/debloat12](https://hub.docker.com/r/lazymio/debloat12): Base image of debloat12 (ASAN--)
+- [lazymio/sand-unifuzz](https://hub.docker.com/r/lazymio/sand-unifuzz): The image used to evaluate SAND against UNIFUZZ
+- [lazymio/sand-debloat12](https://hub.docker.com/r/lazymio/sand-debloat12): The image used to evaluate debloat12 against UNIFUZZ
 
 Some building process might has a dependency on the host kernel version and our evaluation environment is:
 
@@ -46,7 +51,14 @@ Likewise, build another all-in-one image for the base line:
 
 ```bash
 docker build -t sand-debloat12 -f Dockerfile.ASAN-- .
-# dockerhub: in progress
+```
+
+Again, we upload prebuilt image:
+
+```bash
+docker pull lazymio/debloat12 # optional
+docker tag lazymio/debloat12 debloat12 # optional
+docker pull lazymio/sand-debloat12
 ```
 
 ### Merge Image
