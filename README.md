@@ -109,6 +109,15 @@ For ease of experiment, it is possible to merge the two images to a single image
 
 This will produce an image `sand-debloat12-sand-unifuzz-merged`.
 
+In addition, it is painful to rebuild all UNIFUZZ and Debloat targets every time you make a few modifications. [update-unifuzz.sh](./update-unifuzz.sh) is designed to only update SAND and copy targets from existing images. 
+
+```
+bash
+./update-unifuzz.sh sand-debloat12-sand-unifuzz-merged sand
+```
+
+This builds an image named `sand` from current directory and copies targets from `sand-debloat12-sand-unifuzz-merged`
+
 ### Start Experiments
 
 Assume you have built the two images above, you could refer to [experiments](./experiments/) to reproduce our fuzzing experiments.
