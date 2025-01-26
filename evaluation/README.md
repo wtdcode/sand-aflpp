@@ -186,10 +186,14 @@ Unfortunately, this process can take _very long_ because not all crashes can be 
 
 In addition, as suggested above, we observed that some programs' behavior will change per different kernel versions. Therefore, you might adjust the script accordingly, we have put a few heuristic rules in the script, though.
 
-After the minimization is done, we have a script [data.py](./data.py) to collect these data. Most tables and figures are made from these raw results.
+This shall deduplicate >90% crashes in our experiment, on some targets, even all crashes. For the last 10% crashes, unfortunately we have to go through a manual process. Generally, we did this following practice from [Magma](https://hexhive.epfl.ch/publications/files/21SIGMETRICS.pdf): Find bug reports/fix from upstream, identify the root cause and manually merge the crashes. For example, a common bug is lacking checks for the length of some fields but causing crashes in different locations.
+
+After the deduplication is done, we have a script [data.py](./data.py) to collect these data. Most tables and figures are made from these raw results.
 
 Usage:
 
 ```bash
 python3 data.py --output /path/to/tmpfs/output
 ```
+
+Note this also collects throughput and a few other metrics.
