@@ -81,7 +81,7 @@ The approach of SAND is rather simple and easy to port to other fuzzers. We once
 
 ```bib
 @inproceedings{sand,
-    author = {Ziqiao Kong, Shaohua Li, Heqing Huang, Zhendong Su},
+    author = {Ziqiao Kong and Shaohua Li and Heqing Huang and Zhendong Su},
     title = {SAND: Decoupling Sanitization from Fuzzing for LowOverhead},
     booktitle = {IEEE/ACM International Conference on Software Engineering (ICSE)},
     year = {2025},
