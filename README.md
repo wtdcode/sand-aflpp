@@ -13,6 +13,16 @@ The original AFL++ README is available [here](./README.AFLpp.md).
 
 Track the upstream progress [here](https://github.com/AFLplusplus/AFLplusplus/pull/2288).
 
+## Contributions Overview
+
+To have a high level overview of our contributions and modifications to original AFL++ repo, we list the main modifications we did with explanations:
+
+- [src/afl-fuzz-bitmap.c](./src/afl-fuzz-bitmap.c): Our core implementation, i.e. the augmentation mentioned in the paper.
+- [src/afl-fuzz.c](./src/afl-fuzz.c): How we spin up multiple forkservers.
+- [src/afl-cc.c](./src/afl-cc.c): How we produce binaries without coverage intrumentation but with forkservers (detailed in the following instructions).
+- [evaluation/README.md]: The evalution reproduction instructions.
+- [docs/SAND.md](./docs/SAND.md): The motivation and detailed fuzzing workflow.
+
 ## Basic Usage
 
 To use SAND, two binaries need to be built like cmplog:
@@ -37,10 +47,12 @@ If docker is not available, follow [The original AFL++ README](./README.AFLpp.md
 The following steps assume you have built the docker image and started a container. If not, do it with:
 
 ```bash
-docker run --rm -it sand
+docker run --rm -it sand bash
 # alternatively
-# docker run --rm -it lazymio/sand
+# docker run --rm -it lazymio/sand bash
 ```
+
+Unless otherwise specified, all the following instructions are executed in the containers.
 
 Take `test_instr.c` as an example, firstly build the native binary:
 
