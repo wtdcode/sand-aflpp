@@ -141,7 +141,7 @@ Although there are bunch of arguments, only a few of them are essential:
 
 For example, some common usages:
 
-- Start all experiments as evaluation setup
+- Start all experiments as our paper evaluation setup (simplified trace, 20 repeats, 24 hours, all sanitizers etc)
 
 ```bash
 python3 eval.py --image sand-unifuzz --asanubsan --msan --seeds /path/to/seeds/general_evaluation \ 
