@@ -167,7 +167,7 @@ python3 eval.py --image sand-unifuzz --asanubsan --single --seeds /path/to/seeds
                 imginfo
 ```
 
-- Start native vanilla AFL++ withtou sanitizers
+- Start native vanilla AFL++ withtout sanitizers
 
 ```bash
 python3 eval.py --image sand-unifuzz --single --seeds /path/to/seeds/general_evaluation \ 
