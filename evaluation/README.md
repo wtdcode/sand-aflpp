@@ -88,7 +88,7 @@ Before really starting experiments, a few things to note:
 
 ### Start Experiments
 
-In most cases, you don't need to really start containers by yourself. [eval.py](./eval.py) is the core script to start fuzzing compaigns so that you can control the compagins on the host machine instead of executing commands in containers manually.
+In most cases, you don't need to really start containers by yourself. [eval.py](./eval.py) is the core script to start fuzzing campaigns so that you can control the compagins on the host machine instead of executing commands in containers manually.
 
 ```bash
 usage: eval [-h] --image IMAGE [--msan] [--asan] [--ubsan] [--asanubsan] [--asanubsanrecover] [--ubsanrecover] [--asanrecover] [--msanrecover] [--debloat] [--single] [--seconds SECONDS] --seeds SEEDS [--repeat REPEAT]
@@ -130,12 +130,12 @@ options:
 Although there are bunch of arguments, only a few of them are essential:
 
 - `image`: The image to be used. You can use the images built above. Personally recommend merging images before starting experiments.
-- `msan/asan/asanubsan/debloat`: As suggested, this options will start fuzzing compaigns with these sanitizers.
+- `msan/asan/asanubsan/debloat`: As suggested, this options will start fuzzing campaigns with these sanitizers.
 - `single`: If this option is given, we are running the single sanitizers instead of SAND, i.e. vanilla fuzzing workflows baselines in our paper. If this option is not given, SAND is used instead.
-- `seconds`: The duration of the fuzzing compaigns, 86400 in our paper.
+- `seconds`: The duration of the fuzzing campaigns, 86400 in our paper.
 - `seeds`: The path to the seeds (outside docker containers on the host machine!).
 - `output`: The path to the output (outside docker containers on the host machine!), and should be tmpfs. The directory will be created if not existing.
-- `repeat`: How many times to repeat for each fuzzing compaigns, 20 in our paper.
+- `repeat`: How many times to repeat for each fuzzing campaigns, 20 in our paper.
 - `cpu`: The starting cpu to bind. For example, if you request 20 repeats and cpu is starting from 0, `eval.py` will spawn docker containers binding to cpu 0, 1, 2...19 for the first benchmark, 20, 21...39 for the next until all cores are occupied.
 - `abstraction`: Default to `simplify_trace` as suggested above. This will pass in `AFL_SAN_ABSTRACTION=simplify_trace`. Alternatively, you could use `unique_trace` or `coverage_increase`, both of which are alternative execution patterns mentioned in our paper.
 
@@ -177,7 +177,7 @@ python3 eval.py --image sand-unifuzz --single --seeds /path/to/seeds/general_eva
 
 ### Colllect Results
 
-After the fuzzing compaigns reach timeout, you will find all results under the given output directory above. Each compaign will have a standalone folder.
+After the fuzzing campaigns reach timeout, you will find all results under the given output directory above. Each campaign will have a standalone folder.
 
 The very first step is to deduplicate all crashes. We used [afl-btmin](https://github.com/wtdcode/afl-btmin) to do so.
 
@@ -187,7 +187,7 @@ First, start another container. Assume the previous results are located at `/pat
 docker run --rm -it -v /path/to/tmpfs/unifuzz:/work lazymio/sand-unifuzz bash
 ```
 
-**Note: The image used here should be consistent with the fuzzing compaigns!**
+**Note: The image used here should be consistent with the fuzzing campaigns!**
 
 Then, install the afl-btmin:
 
@@ -214,7 +214,7 @@ cd /AFLplusplus/evaluation
 python3 mini.py --output /work
 ```
 
-Unfortunately, this process can take _very long_ because not all crashes can be reproduced after fuzzing compaigns or some crashes might have infinite loop/recursion and we run each crash a few times to collect the precise backtraces. In worst cases, we took ~12 hours to minimize all crashes for our evaluation setup. Do note that [mini.py](./mini.py) already utilizes multithread to speed up.
+Unfortunately, this process can take _very long_ because not all crashes can be reproduced after fuzzing campaigns or some crashes might have infinite loop/recursion and we run each crash a few times to collect the precise backtraces. In worst cases, we took ~12 hours to minimize all crashes for our evaluation setup. Do note that [mini.py](./mini.py) already utilizes multithread to speed up.
 
 In addition, as suggested above, we observed that some programs' behavior will change per different kernel versions. Therefore, you might adjust the script accordingly, we have put a few heuristic rules in the script, though.
 
