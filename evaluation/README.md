@@ -84,7 +84,7 @@ This builds an image named `sand-from-sand-debloat12-sand-unifuzz-merged` from c
 Before really starting experiments, a few things to note:
 
 - Always use tmpfs as output directory, or you get greatly reduced performance.
-- Run `afl-fuzz` with `AFL_SAN_ABSTRACTION=simplify_trace`, which is our evaluation setup. This has been enforced in all our default evaluation setups. In case you are exploring alternative abstractions (execution patterns), you do not need to care about this.
+- Run `afl-fuzz` with `AFL_SAN_ABSTRACTION=simplify_trace`, which is our evaluation setup. This has been enforced in all our default evaluation setups like the `eval.py` detailed in the next section. Unless you are exploring alternative abstractions (execution patterns) or manually starting `afl-fuzz`, you do not need to care about this.
 
 ### Start Experiments
 
